@@ -1,0 +1,537 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
+  <base href="/snacks/" />
+  <title>零食库存管理系统</title>
+  <style>
+    :root {
+      --bg:#fff7fb;
+      --card:#ffffff;
+      --primary:#7c8cf8;
+      --primary-soft:#eef0ff;
+      --danger:#ff6b8a;
+      --warn:#f6b26b;
+      --muted:#7a7f9a;
+      --text:#3f4462;
+      --line:#ece7f8;
+      --mint:#b9f3e4;
+      --peach:#ffd9cc;
+    }
+    *{box-sizing:border-box}
+    body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Arial,"PingFang SC","Microsoft YaHei",sans-serif;background:linear-gradient(180deg,#fff8fc,#f8fbff);color:var(--text)}
+    .container{max-width:1200px;margin:0 auto;padding:16px}
+    .top{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px}
+    .title{font-size:24px;font-weight:700;color:#5d6492}
+    .card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:14px;box-shadow:0 8px 20px rgba(124,140,248,.10)}
+    .toolbar{display:grid;grid-template-columns:auto 1fr auto;gap:10px;align-items:center;margin-top:14px}
+    .search-panel{
+      display:flex;align-items:center;gap:8px;min-width:0;
+      max-width:0;opacity:0;overflow:hidden;pointer-events:none;
+      max-height:0;height:auto;margin:0;padding:0;border:0;
+      transition:max-width .25s ease, opacity .2s ease, height .2s ease;
+    }
+    .search-panel.show{max-width:760px;max-height:120px;opacity:1;pointer-events:auto}
+    .search-panel input,.search-panel select{max-width:220px}
+    .grid{display:grid;grid-template-columns:1fr;gap:12px;margin-top:12px}
+    .item{display:flex;gap:12px;align-items:flex-start;padding:12px}
+    .item img{width:78px;height:78px;object-fit:cover;border-radius:12px;background:#f2f4ff;flex:0 0 78px}
+    .item-main{flex:1;min-width:0}
+    .item-top{display:flex;justify-content:space-between;align-items:flex-start;gap:8px}
+    .item h4{margin:0;font-size:16px;font-weight:700}
+    .stock-pill{font-size:14px;font-weight:700;color:#4f5fb0;background:var(--primary-soft);padding:4px 10px;border-radius:999px;white-space:nowrap}
+    .item-meta{display:grid;grid-template-columns:1fr;gap:6px;margin-top:6px}
+    .meta-top{display:flex;gap:12px;align-items:center;flex-wrap:wrap}
+    .meta-bottom{display:flex;gap:12px;align-items:center;flex-wrap:wrap}
+    .meta-bottom .muted,.meta-top .muted,.meta-bottom div{font-size:13px}
+    .muted{color:var(--muted);font-size:13px}
+    .warn{color:var(--warn);font-weight:700}
+    .expired{color:var(--danger);font-weight:700}
+    input,select,button,textarea{width:100%;padding:9px 11px;border:1px solid var(--line);border-radius:10px;font-size:15px;background:#fff}
+    button{border:none;background:var(--primary);color:#fff;cursor:pointer}
+    button.gray{background:#9ba5de}
+    button.danger{background:var(--danger)}
+    .actions{display:flex;gap:8px;flex-wrap:wrap}
+    .actions>*{width:auto}
+    .stock-actions{display:flex;gap:8px;margin-top:8px;flex-wrap:wrap}
+    .stock-actions button{width:auto;padding:6px 10px;border-radius:9px;font-size:12px;white-space:nowrap}
+    .row{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+    .form-stack{display:grid;gap:8px;margin-top:8px}
+    .inline-actions{display:flex;gap:8px;align-items:center;margin-top:2px}
+    .inline-actions input{flex:1}
+    .inline-actions button{width:auto;white-space:nowrap}
+    .field{display:grid;gap:4px}
+    .field label{font-size:12px;color:var(--muted);font-weight:600;padding-left:2px}
+    .modal-actions{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-top:8px}
+    .right-actions{display:flex;gap:8px;flex:1;justify-content:flex-end}
+    .modal-actions button{width:auto;min-width:84px;padding:7px 10px;font-size:13px;border-radius:8px}
+    #btnCloseSnack{min-width:72px}
+    .upload-box{display:grid;gap:4px}
+    .upload-box .muted{margin-top:-2px}
+    input:focus,select:focus,textarea:focus{outline:none;border-color:#a8b1ff;box-shadow:0 0 0 3px rgba(124,140,248,.14)}
+    .auth{max-width:420px;margin:40px auto}
+    .modal{position:fixed;inset:0;background:rgba(0,0,0,.35);display:none;align-items:center;justify-content:center;z-index:20;padding:10px;overflow-y:auto}
+    .modal.show{display:flex}
+    .modal-content{width:min(480px,95vw);max-height:92vh;overflow-y:auto;background:#fff;padding:12px;border-radius:12px}
+    .modal-content h3{margin:2px 0 6px;font-size:18px}
+    @media (max-width:860px){
+      .top{gap:12px}
+      .toolbar{grid-template-columns:1fr auto;grid-template-areas:"toggle refresh" "search search";gap:8px}
+      #btnToggleSearch{grid-area:toggle}
+      #btnRefresh{grid-area:refresh}
+      .search-panel{grid-area:search;flex-wrap:wrap;max-width:none;width:100%}
+      .search-panel.show{max-width:none;max-height:160px}
+      .search-panel input,.search-panel select{max-width:none;flex:1;min-width:140px}
+      .row{grid-template-columns:1fr}
+      .inline-actions{gap:6px}
+      .inline-actions input{min-width:0}
+      .muted{font-size:12px}
+      .modal-actions{gap:6px}
+      .modal-actions button{min-width:0;padding:8px 10px}
+      #btnCloseSnack{flex:0 0 auto}
+      .right-actions{gap:6px}
+      .right-actions button{flex:1}
+      .modal-content{width:100%;max-width:100%;max-height:94vh;padding:10px}
+      .item{padding:11px}
+      .item img{width:68px;height:68px;flex-basis:68px}
+      .item-top{align-items:center}
+      .stock-pill{font-size:13px;padding:3px 9px}
+      .meta-bottom{gap:10px}
+    }
+  </style>
+</head>
+<body>
+<div class="container">
+  <div class="top">
+    <div class="title">零食库存管理系统</div>
+    <div class="actions">
+      <button id="btnOpenAdd">新增零食</button>
+      <button class="gray" id="btnAdmin">后台管理</button>
+      <button class="danger" id="btnLogout">退出</button>
+    </div>
+  </div>
+
+  <div id="authBox" class="card auth" style="display:none">
+    <h3>登录 / 注册</h3>
+    <div class="row">
+      <input id="authUser" placeholder="用户名" />
+      <input id="authPass" type="password" placeholder="密码" />
+    </div>
+    <div class="actions" style="margin-top:10px">
+      <button id="btnLogin">登录</button>
+      <button class="gray" id="btnRegister">注册</button>
+    </div>
+  </div>
+
+  <div id="mainBox" style="display:none">
+    <div class="card">
+      <div class="toolbar">
+        <div id="searchPanel" class="search-panel">
+          <input id="searchKeyword" placeholder="按名称搜索零食..." />
+          <select id="filterCategory"><option value="">全部分类</option></select>
+          <button id="btnSearch">查询</button>
+        </div>
+        <button class="gray" id="btnToggleSearch">展开搜索</button>
+        <button class="gray" id="btnRefresh">刷新</button>
+      </div>
+    </div>
+    <div id="list" class="grid"></div>
+  </div>
+</div>
+
+<div id="snackModal" class="modal">
+  <div class="modal-content">
+    <h3 id="modalTitle">新增零食</h3>
+    <input type="hidden" id="snackId" />
+    <div class="upload-box">
+      <label for="imageFile">封面图片</label>
+      <input id="imageFile" type="file" accept="image/*" />
+      <div class="muted">支持上传封面，系统会自动生成压缩缩略图</div>
+    </div>
+    <div class="form-stack">
+      <div class="row">
+        <div class="field">
+          <label for="name">零食名称</label>
+          <input id="name" placeholder="请输入名称" />
+        </div>
+        <div class="field">
+          <label for="category_id">分类</label>
+          <select id="category_id"></select>
+        </div>
+      </div>
+      <div class="inline-actions">
+        <input id="quickCategoryName" placeholder="输入新分类名（可选）" />
+        <button type="button" class="gray" id="btnQuickAddCategory">新增分类</button>
+      </div>
+      <div class="row">
+        <div class="field">
+          <label for="stock">库存数量</label>
+          <input id="stock" type="number" placeholder="请输入库存数量" />
+        </div>
+        <div class="field">
+          <label for="production_date">生产日期</label>
+          <input id="production_date" type="date" />
+        </div>
+      </div>
+      <div class="row">
+        <div class="field">
+          <label for="shelf_life_days">保质期天数（可选）</label>
+          <input id="shelf_life_days" type="number" placeholder="例如 30" />
+        </div>
+        <div class="field">
+          <label for="expiry_date">到期日期（可选）</label>
+          <input id="expiry_date" type="date" />
+        </div>
+      </div>
+    </div>
+    <div class="muted">保质期天数 和 到期日期 二选一即可</div>
+    <input type="hidden" id="image_original" />
+    <input type="hidden" id="image_thumb" />
+    <div class="modal-actions">
+      <button class="gray" id="btnCloseSnack">取消</button>
+      <div class="right-actions">
+        <button class="gray" id="btnSaveAndContinue">+ 继续新增</button>
+        <button id="btnSaveSnack">保存</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="stockModal" class="modal">
+  <div class="modal-content">
+    <h3>库存操作</h3>
+    <input type="hidden" id="stockSnackId" />
+    <div class="row">
+      <select id="stockType">
+        <option value="in">入库（增加）</option>
+        <option value="out">出库（减少）</option>
+        <option value="adjust">盘点调整（设为）</option>
+      </select>
+      <input id="stockQty" type="number" placeholder="数量" value="1" />
+    </div>
+    <textarea id="stockNote" rows="3" placeholder="备注（可选）" style="margin-top:8px"></textarea>
+    <div class="actions" style="margin-top:10px">
+      <button id="btnConfirmStock">确认</button>
+      <button class="gray" id="btnCloseStock">取消</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const BASE_PATH = "/snacks";
+const API_BASE = `${BASE_PATH}/api`;
+const api = {
+  async request(url, options = {}) {
+    const res = await fetch(url, { credentials: "include", ...options });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(data.message || "请求失败");
+    return data;
+  }
+};
+
+let snacks = [];
+let categories = [];
+let currentUser = null;
+
+function openModal(id){ document.getElementById(id).classList.add("show"); }
+function closeModal(id){ document.getElementById(id).classList.remove("show"); }
+
+function fmtDaysLeft(days) {
+  if (days === null || days === undefined) return "未设置";
+  if (days < 0) return `已过期 ${Math.abs(days)} 天`;
+  if (days > 30) return `大于 ${Math.floor(days / 30)} 个月`;
+  return `剩余 ${days} 天`;
+}
+
+async function checkAuth() {
+  try {
+    const me = await api.request(`${API_BASE}/auth/me`);
+    currentUser = me.user;
+    document.getElementById("authBox").style.display = "none";
+    document.getElementById("mainBox").style.display = "block";
+    document.getElementById("btnAdmin").style.display = "inline-block";
+    await loadCategories();
+    await loadSnacks();
+    await checkEditParam();
+  } catch {
+    currentUser = null;
+    document.getElementById("authBox").style.display = "block";
+    document.getElementById("mainBox").style.display = "none";
+    document.getElementById("btnAdmin").style.display = "none";
+  }
+}
+
+async function loadCategories() {
+  categories = await api.request(`${API_BASE}/categories`);
+  const opts = categories.map(c => `<option value="${c.id}">${c.name}</option>`).join("");
+  document.getElementById("category_id").innerHTML = `<option value="">请选择分类</option>${opts}`;
+  document.getElementById("filterCategory").innerHTML = `<option value="">全部分类</option>${opts}`;
+}
+
+async function quickAddCategory() {
+  const input = document.getElementById("quickCategoryName");
+  const name = input.value.trim();
+  if (!name) {
+    alert("请先输入分类名");
+    return;
+  }
+  await api.request(`${API_BASE}/categories`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ name })
+  });
+  await loadCategories();
+  const matched = categories.find(c => c.name === name);
+  if (matched) document.getElementById("category_id").value = String(matched.id);
+  input.value = "";
+  alert("分类新增成功");
+}
+
+async function loadSnacks() {
+  const keyword = document.getElementById("searchKeyword").value.trim();
+  const categoryId = document.getElementById("filterCategory").value;
+  const q = new URLSearchParams();
+  if (keyword) q.set("keyword", keyword);
+  if (categoryId) q.set("categoryId", categoryId);
+  snacks = await api.request(`${API_BASE}/snacks?${q.toString()}`);
+  renderList();
+}
+
+function renderList() {
+  const list = document.getElementById("list");
+  const filteredSnacks = snacks.filter(item => item.stock > 0);
+  list.innerHTML = filteredSnacks.map(item => {
+    const statusClass = item.expiryStatus === "expired" ? "expired" : (item.expiryStatus === "warning" ? "warn" : "");
+    return `
+      <div class="card item">
+        <img src="${item.image_thumb || item.image_original || ""}" alt="${item.name}" onerror="this.src=''" />
+        <div class="item-main">
+          <div class="item-top">
+            <h4>${item.name}</h4>
+            <div class="stock-pill">库存 ${item.stock}</div>
+          </div>
+          <div class="item-meta">
+            <div class="meta-top">
+              <div class="muted">分类：${item.category_name || "未分类"}</div>
+              <div class="muted">ID：${item.id}</div>
+            </div>
+            <div class="meta-bottom">
+              <div class="${statusClass}">保质期：${fmtDaysLeft(item.daysLeft)}</div>
+              <div class="muted">到期日：${item.expiry_date || "未设置"}</div>
+            </div>
+          </div>
+          <div class="stock-actions">
+            <button onclick="quickStock(${item.id}, 'in')">+ 增加</button>
+            <button class="gray" onclick="quickStock(${item.id}, 'out')">- 减少</button>
+            <button class="gray" onclick='editSnack(${JSON.stringify(item).replace(/'/g, "&#39;")})'>编辑</button>
+            <button class="danger" onclick="delSnack(${item.id})">删除</button>
+          </div>
+        </div>
+      </div>
+    `;
+  }).join("");
+}
+
+function toggleSearchPanel() {
+  const panel = document.getElementById("searchPanel");
+  const btn = document.getElementById("btnToggleSearch");
+  const expanded = panel.classList.toggle("show");
+  btn.textContent = expanded ? "收起搜索" : "展开搜索";
+  if (expanded) document.getElementById("searchKeyword").focus();
+}
+
+function resetSnackForm() {
+  ["snackId", "name", "stock", "production_date", "shelf_life_days", "expiry_date", "image_original", "image_thumb"]
+    .forEach(id => document.getElementById(id).value = "");
+  document.getElementById("category_id").value = "";
+  document.getElementById("quickCategoryName").value = "";
+  document.getElementById("imageFile").value = "";
+}
+
+async function uploadIfNeeded() {
+  const file = document.getElementById("imageFile").files[0];
+  if (!file) return;
+  const fd = new FormData();
+  fd.append("image", file);
+  const data = await api.request(`${API_BASE}/upload`, { method: "POST", body: fd });
+  document.getElementById("image_original").value = data.original;
+  document.getElementById("image_thumb").value = data.thumb;
+}
+
+async function saveSnack(keepAdding = false) {
+  await uploadIfNeeded();
+  const id = document.getElementById("snackId").value;
+  const payload = {
+    name: document.getElementById("name").value.trim(),
+    category_id: document.getElementById("category_id").value || null,
+    stock: Number(document.getElementById("stock").value || 0),
+    production_date: document.getElementById("production_date").value || null,
+    shelf_life_days: document.getElementById("shelf_life_days").value || null,
+    expiry_date: document.getElementById("expiry_date").value || null,
+    image_original: document.getElementById("image_original").value || null,
+    image_thumb: document.getElementById("image_thumb").value || null
+  };
+
+  if (!payload.expiry_date && !payload.shelf_life_days) {
+    alert("请填写到期日期或保质期天数（二选一）");
+    return;
+  }
+
+  if (id) {
+    await api.request(`${API_BASE}/snacks/${id}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload)
+    });
+  } else {
+    await api.request(`${API_BASE}/snacks`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload)
+    });
+  }
+
+  await loadSnacks();
+  if (keepAdding) {
+    resetSnackForm();
+    document.getElementById("name").focus();
+    return;
+  }
+  closeModal("snackModal");
+}
+
+function editSnack(item) {
+  document.getElementById("modalTitle").innerText = "编辑零食";
+  document.getElementById("snackId").value = item.id || "";
+  document.getElementById("name").value = item.name || "";
+  document.getElementById("category_id").value = item.category_id || "";
+  document.getElementById("stock").value = item.stock || 0;
+  document.getElementById("production_date").value = item.production_date || "";
+  document.getElementById("shelf_life_days").value = item.shelf_life_days || "";
+  document.getElementById("expiry_date").value = item.expiry_date || "";
+  document.getElementById("image_original").value = item.image_original || "";
+  document.getElementById("image_thumb").value = item.image_thumb || "";
+  openModal("snackModal");
+}
+
+async function delSnack(id) {
+  if (!confirm("确认删除该零食？")) return;
+  await api.request(`${API_BASE}/snacks/${id}`, { method: "DELETE" });
+  await loadSnacks();
+}
+
+function quickStock(id, type) {
+  document.getElementById("stockSnackId").value = id;
+  document.getElementById("stockType").value = type;
+  document.getElementById("stockQty").value = 1;
+  document.getElementById("stockNote").value = "";
+  openModal("stockModal");
+}
+
+async function confirmStock() {
+  const id = document.getElementById("stockSnackId").value;
+  const payload = {
+    type: document.getElementById("stockType").value,
+    quantity: Number(document.getElementById("stockQty").value || 0),
+    note: document.getElementById("stockNote").value || ""
+  };
+  await api.request(`${API_BASE}/snacks/${id}/stock`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload)
+  });
+  alert("库存操作成功");
+  closeModal("stockModal");
+  await loadSnacks();
+}
+
+window.editSnack = editSnack;
+window.delSnack = delSnack;
+window.quickStock = quickStock;
+
+// 检测URL中的edit参数，自动打开编辑模态框
+async function checkEditParam() {
+  const urlParams = new URLSearchParams(window.location.search);
+  const editId = urlParams.get('edit');
+  if (editId) {
+    // 移除URL参数，避免刷新页面时重复打开
+    const url = new URL(window.location);
+    url.searchParams.delete('edit');
+    window.history.replaceState({}, '', url);
+    
+    // 查找对应的零食并打开编辑模态框
+    let snack = snacks.find(item => item.id == editId);
+    if (!snack) {
+      // 如果在当前snacks数组中找不到（例如库存为0的零食），则通过API获取
+      try {
+        // 由于没有直接获取单个零食的API，我们重新加载所有零食
+        await loadSnacks();
+        snack = snacks.find(item => item.id == editId);
+      } catch (e) {
+        console.error('获取零食信息失败:', e);
+      }
+    }
+    if (snack) {
+      editSnack(snack);
+    }
+  }
+}
+
+document.getElementById("btnOpenAdd").onclick = () => {
+  document.getElementById("modalTitle").innerText = "新增零食";
+  resetSnackForm();
+  openModal("snackModal");
+};
+document.getElementById("btnSaveSnack").onclick = () => saveSnack(false).catch(e => alert(e.message));
+document.getElementById("btnSaveAndContinue").onclick = () => saveSnack(true).catch(e => alert(e.message));
+document.getElementById("btnCloseSnack").onclick = () => closeModal("snackModal");
+document.getElementById("btnSearch").onclick = () => loadSnacks().catch(e => alert(e.message));
+document.getElementById("btnRefresh").onclick = () => loadSnacks().catch(e => alert(e.message));
+document.getElementById("btnToggleSearch").onclick = () => toggleSearchPanel();
+document.getElementById("btnConfirmStock").onclick = () => confirmStock().catch(e => alert(e.message));
+document.getElementById("btnCloseStock").onclick = () => closeModal("stockModal");
+document.getElementById("btnAdmin").onclick = () => location.href = `${BASE_PATH}/admin`;
+document.getElementById("btnQuickAddCategory").onclick = () => quickAddCategory().catch(e => alert(e.message));
+
+document.getElementById("btnLogin").onclick = async () => {
+  try {
+    await api.request(`${API_BASE}/auth/login`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        username: document.getElementById("authUser").value.trim(),
+        password: document.getElementById("authPass").value
+      })
+    });
+    await checkAuth();
+  } catch (e) {
+    alert(e.message);
+  }
+};
+
+document.getElementById("btnRegister").onclick = async () => {
+  try {
+    await api.request(`${API_BASE}/auth/register`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        username: document.getElementById("authUser").value.trim(),
+        password: document.getElementById("authPass").value
+      })
+    });
+    await checkAuth();
+  } catch (e) {
+    alert(e.message);
+  }
+};
+
+document.getElementById("btnLogout").onclick = async () => {
+  await api.request(`${API_BASE}/auth/logout`, { method: "POST" });
+  await checkAuth();
+};
+
+checkAuth();
+</script>
+</body>
+</html>

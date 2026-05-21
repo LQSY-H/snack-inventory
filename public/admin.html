@@ -1,0 +1,340 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
+  <base href="/snacks/" />
+  <title>后台管理 - 零食库存</title>
+  <style>
+    :root{
+      --bg:#fff7fb;
+      --card:#ffffff;
+      --primary:#7c8cf8;
+      --primary-soft:#eef0ff;
+      --danger:#ff6b8a;
+      --muted:#7a7f9a;
+      --line:#ece7f8;
+      --text:#3f4462;
+      --mint:#b9f3e4;
+      --peach:#ffd9cc;
+    }
+    *{box-sizing:border-box}
+    body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Arial,"PingFang SC","Microsoft YaHei",sans-serif;background:linear-gradient(180deg,#fff8fc,#f8fbff);color:var(--text)}
+    .container{max-width:1100px;margin:auto;padding:16px}
+    .top{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:10px}
+    .top h2{margin:0;color:#5d6492}
+    .card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:14px;margin-bottom:12px;box-shadow:0 8px 20px rgba(124,140,248,.10)}
+    .section-title{margin:0 0 10px;font-size:18px;color:#59608f}
+    .row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+    input,select,button{padding:9px 11px;border:1px solid var(--line);border-radius:10px;font-size:15px;background:#fff}
+    input{min-width:200px;flex:1}
+    button{border:none;background:var(--primary);color:#fff;cursor:pointer}
+    button.gray{background:#9ba5de}
+    button.danger{background:var(--danger)}
+    .tag-wrap{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px}
+    .tag{display:inline-flex;align-items:center;gap:6px;background:var(--primary-soft);color:#5862a0;padding:6px 10px;border-radius:999px;font-size:13px}
+    .tag a{color:var(--danger);text-decoration:none;font-weight:600}
+    .table-wrap{overflow:auto;border:1px solid var(--line);border-radius:12px;background:#fff}
+    table{width:100%;border-collapse:collapse;min-width:640px}
+    th,td{border-bottom:1px solid #f1ecfa;padding:10px;text-align:left;font-size:13px;white-space:nowrap}
+    th{background:#faf8ff;color:#666e9c}
+    td.note{max-width:260px;white-space:normal;word-break:break-word}
+    .toolbar{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:8px}
+    .toolbar select,.toolbar input{min-width:130px;flex:0 0 auto}
+    .muted{color:var(--muted);font-size:12px}
+    @media (max-width:860px){
+      .container{padding:12px}
+      .card{padding:12px;border-radius:14px}
+      .section-title{font-size:16px}
+      input,select,button{font-size:14px;padding:8px 10px}
+      .toolbar{gap:6px}
+      .toolbar input,.toolbar select{flex:1;min-width:120px}
+      table{min-width:560px}
+    }
+  </style>
+</head>
+<body>
+<div class="container">
+  <div class="top">
+    <h2>后台管理</h2>
+    <button class="gray" onclick="location.href='/snacks/'">返回主页</button>
+  </div>
+
+  <div class="card">
+    <h3 class="section-title">分类管理</h3>
+    <div class="row">
+      <input id="catName" placeholder="新增分类名" />
+      <button onclick="addCategory()">新增分类</button>
+    </div>
+    <div id="cats" class="tag-wrap"></div>
+  </div>
+
+  <div class="card">
+    <h3 class="section-title">用户管理</h3>
+    <div id="userManageHint" class="muted" style="margin-bottom:8px;display:none">仅管理员可查看用户列表</div>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>ID</th><th>用户名</th><th>角色</th><th>创建时间</th><th>操作</th></tr></thead>
+        <tbody id="users"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="card">
+    <h3 class="section-title">库存为0的项目</h3>
+    <button class="gray" id="btnLoadHiddenItems">加载被隐藏的项目</button>
+    <div class="table-wrap" style="margin-top:10px">
+      <table>
+        <thead><tr><th>ID</th><th>名称</th><th>操作</th><th>分类</th><th>库存</th></tr></thead>
+        <tbody id="hiddenItems"></tbody>
+      </table>
+    </div>
+    <div class="muted" id="hiddenItemsCountText" style="margin-top:8px"></div>
+  </div>
+
+  <div class="card">
+    <h3 class="section-title">出入库历史</h3>
+    <div class="toolbar">
+      <select id="recordTypeFilter">
+        <option value="">全部类型</option>
+        <option value="in">入库</option>
+        <option value="out">出库</option>
+        <option value="adjust">调整</option>
+      </select>
+      <input id="recordKeyword" placeholder="按零食名/备注搜索" />
+      <button class="gray" id="btnFilterRecords">筛选</button>
+      <button class="gray" id="btnResetRecords">重置筛选</button>
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>时间</th><th>零食</th><th>类型</th><th>数量</th><th>备注</th></tr></thead>
+        <tbody id="records"></tbody>
+      </table>
+    </div>
+    <div style="margin-top:8px; display:flex; justify-content:space-between; align-items:center">
+      <div class="muted" id="recordCountText"></div>
+      <button class="gray" id="btnLoadMoreRecords" style="display:none">展开更多记录</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const BASE_PATH = "/snacks";
+const API_BASE = `${BASE_PATH}/api`;
+const api = {
+  async request(url, options = {}) {
+    const res = await fetch(url, { credentials: "include", ...options });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(data.message || "请求失败");
+    return data;
+  }
+};
+
+let currentUser = null;
+
+async function init() {
+  try {
+    const me = await api.request(`${API_BASE}/auth/me`);
+    currentUser = me.user;
+  } catch {
+    alert("请先登录");
+    location.href = "/snacks/";
+    return;
+  }
+  await Promise.all([loadCategories(), loadRecords()]);
+  if (currentUser.role === "admin") {
+    await loadUsers();
+  } else {
+    // 普通用户隐藏用户管理部分
+    document.querySelector('.card:nth-child(3)').style.display = 'none';
+  }
+}
+
+async function loadCategories() {
+  const rows = await api.request(`${API_BASE}/categories`);
+  document.getElementById("cats").innerHTML = rows.map(c => `
+    <span class="tag">${c.name}
+      <a href="javascript:void(0)" onclick="delCategory(${c.id})" style="color:#dc2626;margin-left:6px">删除</a>
+    </span>
+  `).join("");
+}
+
+async function addCategory() {
+  const name = document.getElementById("catName").value.trim();
+  if (!name) return alert("请输入分类名");
+  await api.request(`${API_BASE}/categories`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ name })
+  });
+  document.getElementById("catName").value = "";
+  await loadCategories();
+}
+
+async function delCategory(id) {
+  if (!confirm("确认删除该分类？")) return;
+  await api.request(`${API_BASE}/categories/${id}`, { method: "DELETE" });
+  await loadCategories();
+}
+
+async function loadUsers() {
+  const users = await api.request(`${API_BASE}/users`);
+  document.getElementById("users").innerHTML = users.map(u => `
+    <tr>
+      <td>${u.id}</td>
+      <td>${u.username}</td>
+      <td>${u.role || "user"}</td>
+      <td>${u.created_at}</td>
+      <td>${u.id === currentUser.id ? '<span class="muted">当前账号</span>' : `<button class="danger" onclick='deleteUser(${u.id}, ${JSON.stringify(u.username)})'>删除用户</button>`}</td>
+    </tr>
+  `).join("");
+}
+
+async function deleteUser(id, username) {
+  if (!confirm(`确认删除用户 ${username} 及其全部数据吗？`)) return;
+  await api.request(`${API_BASE}/users/${id}`, { method: "DELETE" });
+  await loadUsers();
+}
+
+let allRecords = [];
+let showAllRecords = false;
+
+async function loadRecords() {
+  allRecords = await api.request(`${API_BASE}/stock-records`);
+  showAllRecords = false;
+  renderRecords();
+}
+
+function renderRecords() {
+  const typeMap = { in: "入库", out: "出库", adjust: "调整" };
+  const typeFilter = document.getElementById("recordTypeFilter").value;
+  const keyword = document.getElementById("recordKeyword").value.trim().toLowerCase();
+
+  const rows = allRecords.filter(r => {
+    if (typeFilter && r.type !== typeFilter) return false;
+    if (!keyword) return true;
+    const text = `${r.snack_name || ""} ${r.note || ""}`.toLowerCase();
+    return text.includes(keyword);
+  });
+
+  const displayRows = showAllRecords ? rows : rows.slice(0, 10);
+  
+  document.getElementById("records").innerHTML = displayRows.map(r => `
+    <tr>
+      <td>${r.created_at}</td>
+      <td>${r.snack_name}</td>
+      <td>${typeMap[r.type] || r.type}</td>
+      <td>${r.quantity}</td>
+      <td class="note">${r.note || ""}</td>
+    </tr>
+  `).join("");
+  
+  document.getElementById("recordCountText").textContent = `共 ${rows.length} 条记录`;
+  
+  const loadMoreBtn = document.getElementById("btnLoadMoreRecords");
+  if (rows.length > 10 && !showAllRecords) {
+    loadMoreBtn.style.display = "inline-block";
+  } else {
+    loadMoreBtn.style.display = "none";
+  }
+}
+
+function loadMoreRecords() {
+  showAllRecords = true;
+  renderRecords();
+}
+
+function editSnackById(id) {
+  // 跳转到主页并打开编辑模态框
+  window.location.href = `${BASE_PATH}/?edit=${id}`;
+}
+
+async function deleteSnack(id) {
+  if (!confirm("确认删除该零食？")) return;
+  await api.request(`${API_BASE}/snacks/${id}`, { method: "DELETE" });
+  alert("删除成功");
+  loadHiddenItems();
+}
+
+window.addCategory = addCategory;
+window.delCategory = delCategory;
+window.deleteUser = deleteUser;
+window.quickStock = quickStock;
+window.editSnackById = editSnackById;
+window.deleteSnack = deleteSnack;
+
+async function loadHiddenItems() {
+  try {
+    const snacks = await api.request(`${API_BASE}/snacks`);
+    const hiddenItems = snacks.filter(item => item.stock === 0);
+    renderHiddenItems(hiddenItems);
+  } catch (e) {
+    alert(e.message);
+  }
+}
+
+function renderHiddenItems(items) {
+  const tbody = document.getElementById("hiddenItems");
+  const countText = document.getElementById("hiddenItemsCountText");
+  
+  if (items.length === 0) {
+    tbody.innerHTML = "<tr><td colspan='5' style='text-align:center; padding:20px; color:var(--muted)'>暂无库存为0的项目</td></tr>";
+    countText.textContent = "共 0 个项目";
+    return;
+  }
+  
+  tbody.innerHTML = items.map(item => `
+    <tr>
+      <td>${item.id}</td>
+      <td>${item.name}</td>
+      <td>
+        <button onclick="editSnackById(${item.id})">编辑</button>
+        <button class="danger" onclick="deleteSnack(${item.id})">删除</button>
+      </td>
+      <td>${item.category_name || "未分类"}</td>
+      <td style="color:var(--danger)">${item.stock}</td>
+    </tr>
+  `).join("");
+  
+  countText.textContent = `共 ${items.length} 个项目`;
+}
+
+function editSnackById(id) {
+  // 跳转到主页并打开编辑模态框
+  window.location.href = `${BASE_PATH}/?edit=${id}`;
+}
+
+function quickStock(id, type) {
+  const stockQty = prompt("请输入要增加的库存数量：", "1");
+  if (stockQty === null) return;
+  const qty = Number(stockQty);
+  if (isNaN(qty) || qty <= 0) {
+    alert("请输入有效的数量");
+    return;
+  }
+  
+  api.request(`${API_BASE}/snacks/${id}/stock`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ type, quantity: qty, note: "从隐藏项目中恢复库存" })
+  }).then(() => {
+    alert("库存操作成功");
+    loadHiddenItems();
+  }).catch(e => {
+    alert(e.message);
+  });
+}
+
+document.getElementById("btnFilterRecords").onclick = renderRecords;
+document.getElementById("btnResetRecords").onclick = () => {
+  document.getElementById("recordTypeFilter").value = "";
+  document.getElementById("recordKeyword").value = "";
+  showAllRecords = false;
+  renderRecords();
+};
+document.getElementById("btnLoadHiddenItems").onclick = loadHiddenItems;
+document.getElementById("btnLoadMoreRecords").onclick = loadMoreRecords;
+init().catch(e => alert(e.message));
+</script>
+</body>
+</html>
